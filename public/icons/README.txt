@@ -1,0 +1,2 @@
+Place icon-192.png and icon-512.png here for PWA install prompts.
+Until then, browsers may ignore missing icons gracefully.

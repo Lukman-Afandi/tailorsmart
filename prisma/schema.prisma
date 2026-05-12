@@ -1,0 +1,443 @@
+// TailorFlow — multi-tenant Prisma schema
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  PEGAWAI
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  PICKED_UP
+}
+
+enum StitchCategory {
+  JAS
+  CELANA
+  BAJU
+  GAMIS
+  SERAGAM
+  CUSTOM
+}
+
+enum StitchProgress {
+  RECEIVED
+  CUTTING
+  SEWING
+  FITTING
+  FINISHING
+  QC
+  READY
+}
+
+enum PaymentStatus {
+  BELUM_BAYAR
+  DP
+  LUNAS
+  HUTANG
+}
+
+enum OrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum OrderAttachmentType {
+  FABRIC
+  FINISHED
+  DESIGN_REF
+}
+
+enum TenantSubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  SUSPENDED
+}
+
+enum BillingProvider {
+  NONE
+  MIDTRANS
+  XENDIT
+}
+
+/// Satu bisnis tailor = satu tenant. Semua data bisnis di-scope ke businessId.
+model Business {
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  logoUrl         String?
+  phone           String?
+  address         String?
+  plan            SubscriptionPlan @default(FREE)
+  subscriptionStatus TenantSubscriptionStatus @default(TRIALING)
+  /// Trial SaaS 7 hari — fitur PRO sampai tanggal ini (jika status TRIALING).
+  trialEndsAt     DateTime?
+  /// Tenant ditangguhkan oleh super admin.
+  suspendedAt     DateTime?
+  onboardingCompletedAt DateTime?
+  billingProvider BillingProvider @default(NONE)
+  midtransCustomerId String?
+  xenditCustomerId   String?
+  /// Nomor urut faktur per tenant (INKR-00001).
+  invoiceSequence Int              @default(0)
+  /// Estimasi hari kerja default jika kategori tidak punya mapping khusus.
+  defaultLeadDays Int              @default(7)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  users     User[]
+  branches  Branch[]
+  customers Customer[]
+  orders    Order[]
+  customerOrderHistories CustomerOrderHistory[]
+  invoices  Invoice[]
+  auditLogs AuditLog[]
+  notifications TenantNotification[]
+  subscriptionEvents SubscriptionEvent[]
+
+  @@index([subscriptionStatus])
+  @@index([suspendedAt])
+}
+
+/// Auth.js compatible User + kredensial tailor
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          UserRole    @default(OWNER)
+  businessId    String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accounts Account[]
+  sessions Session[]
+  orderRevisions OrderRevision[]
+  assignedOrders Order[] @relation("OrderAssignee")
+  auditLogs     AuditLog[]
+  notifications TenantNotification[]
+
+  @@index([businessId])
+  @@index([businessId, email])
+}
+
+/// Cabang tailor — multi lokasi per tenant.
+model Branch {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  slug       String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customers Customer[]
+  orders    Order[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Customer {
+  id               String   @id @default(cuid())
+  businessId       String
+  branchId         String?
+  name             String
+  phone            String
+  address          String?
+  /// Ukuran badan: JSON fleksibel (dada, pinggang, panjang, dll.)
+  bodyMeasurements Json?
+  notes            String?  @db.Text
+  /// BASIC+: tanggal follow-up / reminder
+  nextFollowUpAt   DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  orders   Order[]
+  orderHistories CustomerOrderHistory[]
+
+  @@index([businessId])
+  @@index([businessId, branchId])
+  @@index([businessId, name])
+  @@index([businessId, phone])
+  @@index([businessId, createdAt])
+  @@index([businessId, updatedAt])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  businessId  String
+  branchId    String?
+  customerId  String
+  /// Penanggung jawab produksi — pegawai hanya melihat order yang di-assign atau belum di-assign (pool).
+  assignedUserId String?
+  title       String
+  description String?
+  status      OrderStatus @default(PENDING)
+
+  category       StitchCategory @default(CUSTOM)
+  stitchProgress StitchProgress @default(RECEIVED)
+  priority       OrderPriority  @default(NORMAL)
+  paymentStatus  PaymentStatus  @default(BELUM_BAYAR)
+  dpAmount       Decimal        @default(0) @db.Decimal(12, 2)
+  amountPaid     Decimal        @default(0) @db.Decimal(12, 2)
+
+  stitchDeadlineAt      DateTime?
+  estimatedCompletionAt DateTime?
+
+  tailorNotes String? @db.Text
+
+  completionNotifiedAt DateTime?
+
+  /// Pemasukan order (IDR) — total tagihan.
+  amount    Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignedUser User?   @relation("OrderAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  attachments OrderAttachment[]
+  revisions   OrderRevision[]
+  invoice     Invoice?
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([customerId])
+  @@index([businessId, createdAt])
+  @@index([businessId, title])
+  @@index([businessId, stitchDeadlineAt])
+  @@index([businessId, priority])
+  @@index([businessId, branchId])
+  @@index([businessId, assignedUserId])
+  @@index([businessId, status, paymentStatus])
+  @@index([businessId, updatedAt])
+}
+
+model OrderAttachment {
+  id        String              @id @default(cuid())
+  orderId   String
+  type      OrderAttachmentType
+  url       String
+  publicId  String?
+  createdAt DateTime            @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model OrderRevision {
+  id        String   @id @default(cuid())
+  orderId   String
+  userId    String?
+  note      String   @db.Text
+  fieldDiff Json?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  businessId  String
+  orderId     String   @unique
+  number      String
+  taxPercent  Decimal  @default(0) @db.Decimal(5, 2)
+  issuedAt    DateTime @default(now())
+  notes       String?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, number])
+  @@index([businessId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([businessId, resource, resourceId])
+}
+
+/// Arsip order per pelanggan — tetap ada meskipun baris Order dihapus (snapshot).
+model CustomerOrderHistory {
+  id             String      @id @default(cuid())
+  businessId     String
+  customerId     String
+  /// ID order saat masih aktif; tetap diisi setelah order dihapus untuk referensi.
+  orderId        String?     @unique
+  title          String
+  description    String?
+  status         OrderStatus
+  amount         Decimal     @default(0) @db.Decimal(12, 2)
+  category       StitchCategory?
+  stitchProgress StitchProgress?
+  paymentStatus  PaymentStatus?
+  dpAmount       Decimal?    @db.Decimal(12, 2)
+  amountPaid     Decimal?    @db.Decimal(12, 2)
+  stitchDeadlineAt      DateTime?
+  estimatedCompletionAt DateTime?
+  orderCreatedAt DateTime
+  orderUpdatedAt DateTime
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, customerId])
+  @@index([customerId, orderCreatedAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+/// Super admin platform (bukan anggota tenant).
+model PlatformAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Antrian job ringan (backup, email massal) — worker via cron / route terpisah.
+model BackgroundJob {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json?
+  status    String   @default("PENDING")
+  attempts  Int      @default(0)
+  runAfter  DateTime @default(now())
+  lastError String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, runAfter])
+}
+
+/// Notifikasi in-app per tenant (multi device lewat polling / revalidate).
+model TenantNotification {
+  id         String    @id @default(cuid())
+  businessId String
+  userId     String?
+  title      String
+  body       String    @db.Text
+  type       String    @default("info")
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([businessId, userId, readAt])
+}
+
+model SubscriptionEvent {
+  id         String   @id @default(cuid())
+  businessId String
+  fromPlan   SubscriptionPlan?
+  toPlan     SubscriptionPlan?
+  provider   BillingProvider?
+  externalId String?
+  amount     Decimal? @db.Decimal(12, 2)
+  raw        Json?
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+}

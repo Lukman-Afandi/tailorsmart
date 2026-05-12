@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx prisma validate
+      - run: npx eslint "src/**/*.{ts,tsx}" --max-warnings 0
+      - run: npx tsc --noEmit
+      - name: Build
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
+          AUTH_SECRET: ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci
+          NEXTAUTH_SECRET: ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+        run: npx prisma generate && npm run build

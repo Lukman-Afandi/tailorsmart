@@ -1,0 +1,53 @@
+Langkah mengaktifkan fitur (setelah deploy)
+1. Database (PostgreSQL)
+Buat database PostgreSQL (Neon, Supabase, RDS, Railway, dll.).
+Set DATABASE_URL di environment hosting (format seperti di .env.example).
+Jalankan migrasi pada setiap release:
+npx prisma migrate deploy
+(Opsional dev/staging) Data contoh: npx prisma db seed — pastikan .env sudah benar karena seed menghapus data tenant lalu mengisi ulang.
+2. Auth (Auth.js / NextAuth)
+Generate secret panjang (misalnya 32+ karakter) untuk AUTH_SECRET (dan samakan NEXTAUTH_SECRET jika Anda memakainya di penyedia hosting).
+Set NEXT_PUBLIC_APP_URL ke URL publik HTTPS (mis. https://app.domain.com).
+Set NEXTAUTH_URL sama dengan URL publik itu (penting untuk cookie dan redirect di banyak host).
+3. Email (Resend)
+Daftar di Resend, buat API key → RESEND_API_KEY.
+Verifikasi domain pengirim, lalu set RESEND_FROM_EMAIL (format Nama <noreply@domain.com>).
+Tanpa ini, alur yang mengandalkan email (verifikasi / reset password) tidak akan terkirim.
+4. Upload gambar (Cloudinary)
+Buat akun Cloudinary, ambil Cloud name, API Key, API Secret.
+Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.
+Tanpa ini, upload logo/foto order akan gagal di backend yang memakai helper Cloudinary.
+5. Rate limit terdistribusi (Upstash Redis, opsional)
+Buat database Redis di Upstash.
+Set UPSTASH_REDIS_REST_URL dan UPSTASH_REDIS_REST_TOKEN.
+Tanpa ini, rate limit auth bisa fallback ke mode lokal per instance (kurang konsisten jika banyak replica).
+6. Cron (trial & background jobs)
+Set CRON_SECRET ke string rahasia panjang.
+Di Vercel, vercel.json sudah mendefinisikan cron ke /api/cron/trial dan /api/cron/jobs — pastikan environment production berisi CRON_SECRET dan panggilan cron dari Vercel tidak diblok middleware (sesuai implementasi Anda).
+Di host lain, jadwalkan curl/scheduler ke endpoint yang sama dengan header secret yang sama dengan yang diharapkan route (cek implementasi di src/app/api/cron/).
+7. Payment gateway
+Midtrans
+
+Set MIDTRANS_SERVER_KEY (server key dari dashboard Midtrans).
+Di dashboard Midtrans, daftarkan URL webhook:
+https://<domain-anda>/api/webhooks/midtrans
+Ingat: pemetaan ke paket berlangganan di kode masih TODO — untuk produksi penuh perlu dilengkapi.
+Xendit
+
+Set XENDIT_WEBHOOK_TOKEN sama dengan callback verification token di dashboard Xendit.
+URL webhook: https://<domain-anda>/api/webhooks/xendit
+Logika setelah verifikasi masih minimal; sesuaikan dengan kebutuhan invoice/langganan.
+8. Super admin platform
+Set PLATFORM_ADMIN_JWT_SECRET (bedakan dari AUTH_SECRET di production).
+Untuk akun admin pertama via seed: set PLATFORM_ADMIN_BOOTSTRAP_EMAIL dan PLATFORM_ADMIN_BOOTSTRAP_PASSWORD, lalu jalankan npx prisma db seed (hanya jika Anda sengaja menjalankan seed — ingat seed menghapus data demo).
+Hapus variabel bootstrap dari env setelah admin dibuat, lalu ganti password lewat alur yang aman.
+9. Docker (jika memakai docker-compose)
+docker compose up --build
+Sebelum pertama kali jalan, dari host (atau entrypoint): jalankan npx prisma migrate deploy dengan DATABASE_URL yang sama seperti di container app.
+Image Dockerfile tidak menjalankan migrasi otomatis; itu sengaja umum agar Anda kontrol migrasi saat release.
+Kesimpulan: Aplikasi sudah dalam kondisi yang wajar untuk deploy setelah perbaikan lint/seed/env/docker kecil di atas. Untuk semua fitur “hidup” end-to-end, yang paling krusial adalah DATABASE_URL, secret auth, URL publik, lalu layanan pihak ketiga (Resend, Cloudinary, opsional Upstash, Midtrans/Xendit, cron). Selesaikan juga TODO webhook Midtrans (dan logika Xendit) jika upgrade paket harus otomatis dari pembayaran.
+
+
+
+rUDPkYrBw4UhBSR2
+7RQqhCvpUfILRK7F

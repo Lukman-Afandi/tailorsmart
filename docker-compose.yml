@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tailorflow
+      POSTGRES_PASSWORD: tailorflow
+      POSTGRES_DB: tailorflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://tailorflow:tailorflow@db:5432/tailorflow
+      AUTH_SECRET: change-me-in-production-min-32-chars-long!!
+      NEXTAUTH_SECRET: change-me-in-production-min-32-chars-long!!
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXTAUTH_URL: http://localhost:3000
+      CRON_SECRET: dev-cron-secret
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
