@@ -6,7 +6,7 @@ import {
   StitchProgress,
 } from "@prisma/client";
 import { z } from "zod";
-import { sanitizeNoteHtml, sanitizePlainText } from "@/lib/sanitize";
+import { sanitizeNoteHtml, sanitizePlainText } from "@/lib/sanitize-html";
 
 export const orderFormSchema = z
   .object({
@@ -17,7 +17,7 @@ export const orderFormSchema = z
       .max(8000)
       .optional()
       .transform((s) =>
-        s == null || s === "" ? undefined : sanitizePlainText(s, 8000) ?? undefined,
+        s == null || s === "" ? undefined : (sanitizePlainText(s, 8000) ?? undefined),
       ),
     amount: z.coerce.number().min(0, "Nominal tidak boleh negatif"),
     status: z.nativeEnum(OrderStatus),
@@ -35,9 +35,7 @@ export const orderFormSchema = z
       .nullable()
       .transform((s) => sanitizeNoteHtml(s)),
     /** `__pool__` = belum ditugaskan (kompatibel dengan Radix Select tanpa value kosong). */
-    assignedUserId: z
-      .union([z.string().cuid(), z.literal("__pool__")])
-      .optional(),
+    assignedUserId: z.union([z.string().cuid(), z.literal("__pool__")]).optional(),
   })
   .superRefine((data, ctx) => {
     const dp = data.dpAmount ?? 0;

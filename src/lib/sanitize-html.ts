@@ -1,22 +1,16 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 
 /** Catatan teks / rich-ish: simpan HTML aman (tag umum saja, tanpa event handler). */
 export function sanitizeNoteHtml(input: string | null | undefined): string | null {
   if (input == null || input === "") return null;
-  const cleaned = DOMPurify.sanitize(input, {
-    ALLOWED_TAGS: [
-      "p",
-      "br",
-      "strong",
-      "em",
-      "u",
-      "ul",
-      "ol",
-      "li",
-      "span",
-    ],
-    ALLOWED_ATTR: ["class"],
+
+  const cleaned = sanitizeHtml(input, {
+    allowedTags: ["p", "br", "strong", "em", "u", "ul", "ol", "li", "span"],
+    allowedAttributes: {
+      span: ["class"],
+    },
   });
+
   const t = cleaned.trim();
   return t.length ? t : null;
 }
@@ -27,7 +21,13 @@ export function sanitizePlainText(
   maxLen: number,
 ): string | null {
   if (input == null || input === "") return null;
-  const stripped = DOMPurify.sanitize(input, { ALLOWED_TAGS: [] });
+
+  const stripped = sanitizeHtml(input, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+
   const t = stripped.replace(/\s+/g, " ").trim().slice(0, maxLen);
+
   return t.length ? t : null;
 }

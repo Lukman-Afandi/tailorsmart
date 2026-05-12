@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sanitizeNoteHtml, sanitizePlainText } from "@/lib/sanitize";
+import { sanitizeNoteHtml, sanitizePlainText } from "@/lib/sanitize-html";
 
 const celanaSchema = z.object({
   panjang: z.string().optional(),
@@ -41,7 +41,7 @@ export const customerFormSchema = z.object({
     .max(2000)
     .optional()
     .transform((s) =>
-      s == null || s === "" ? undefined : sanitizePlainText(s, 2000) ?? undefined,
+      s == null || s === "" ? undefined : (sanitizePlainText(s, 2000) ?? undefined),
     ),
   notes: z
     .string()
