@@ -10,8 +10,9 @@ const csp = [
   "img-src 'self' data: blob: https://res.cloudinary.com",
   "font-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "connect-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://app.midtrans.com",
+  "connect-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com",
+  "frame-src https://app.sandbox.midtrans.com https://app.midtrans.com",
 ].join("; ");
 
 const securityHeaders = [
