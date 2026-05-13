@@ -105,6 +105,7 @@ export async function finalizePaidSubscriptionFromMidtrans(input: {
       data: {
         status: BillingTransactionStatus.PAID,
         paidAt: input.paidAt,
+        expiresAt: input.subscriptionEndsAt,
       },
     }),
     prisma.business.update({

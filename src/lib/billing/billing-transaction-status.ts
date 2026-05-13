@@ -9,3 +9,14 @@ export const BillingTransactionStatus = {
 
 export type BillingTransactionStatus =
   (typeof BillingTransactionStatus)[keyof typeof BillingTransactionStatus];
+
+export const BILLING_TRANSACTION_STATUS_LABEL: Record<
+  BillingTransactionStatus,
+  string
+> = {
+  PENDING: "Menunggu pembayaran",
+  PAID: "Lunas",
+  FAILED: "Gagal",
+  EXPIRED: "Kedaluwarsa",
+  CANCELLED: "Dibatalkan",
+};
