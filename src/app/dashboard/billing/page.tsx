@@ -27,13 +27,16 @@ export default async function BillingPage({
   });
 
   const trialLeft = trialDaysRemaining(business);
+  const midtransConfigured = !!(
+    process.env.MIDTRANS_SERVER_KEY && process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Billing & langganan</h2>
         <p className="text-muted-foreground">
-          Kelola paket, trial, dan integrasi pembayaran (Midtrans / Xendit).
+          Paket SaaS, Midtrans Snap, dan riwayat transaksi.
         </p>
       </div>
       {sp.suspended === "1" ? (
@@ -46,17 +49,26 @@ export default async function BillingPage({
         subscriptionStatus={business.subscriptionStatus}
         trialDaysRemaining={trialLeft}
         suspended={!!business.suspendedAt}
+        midtransConfigured={midtransConfigured}
       />
       <p className="text-xs text-muted-foreground">
-        Pembayaran otomatis: sambungkan webhook di{" "}
-        <Link className="underline" href="/api/webhooks/midtrans">
-          Midtrans
-        </Link>{" "}
-        /{" "}
-        <Link className="underline" href="/api/webhooks/xendit">
-          Xendit
-        </Link>{" "}
-        (stub siap produksi).
+        Webhook Midtrans (POST):{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+          /api/webhooks/midtrans
+        </code>
+        {process.env.NEXT_PUBLIC_APP_URL ? (
+          <>
+            {" "}
+            — URL penuh:{" "}
+            <Link
+              className="font-mono underline"
+              href={`${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/webhooks/midtrans`}
+            >
+              {process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}
+              /api/webhooks/midtrans
+            </Link>
+          </>
+        ) : null}
       </p>
     </div>
   );

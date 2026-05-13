@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { applyExpiredSubscriptionIfNeeded } from "@/lib/subscription-expiry";
 import { TenantGate } from "@/components/dashboard/tenant-gate";
 import { DashboardDesktopSidebar } from "@/components/layout/dashboard-nav";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -30,6 +31,8 @@ export default async function DashboardLayout({
   if (!business) {
     redirect("/login");
   }
+
+  await applyExpiredSubscriptionIfNeeded(business.id);
 
   return (
     <SessionProvider session={session}>

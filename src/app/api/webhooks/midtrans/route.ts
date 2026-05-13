@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { verifyMidtransSignature } from "@/services/payment/midtrans.service";
+import { processMidtransNotification } from "@/services/billing/midtrans-notification.service";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
 /**
- * Webhook Midtrans — validasi signature & proses status pembayaran.
- * Hubungkan URL ini di dashboard Midtrans production.
+ * Webhook Midtrans — verifikasi signature + GET status server-side, lalu update langganan.
+ * Daftarkan URL ini di dashboard Midtrans (Production / Sandbox).
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -14,29 +14,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const orderId = String((body as { order_id?: string }).order_id ?? "");
-  const statusCode = String((body as { status_code?: string }).status_code ?? "");
-  const grossAmount = String((body as { gross_amount?: string }).gross_amount ?? "");
-  const signatureKey = String((body as { signature_key?: string }).signature_key ?? "");
-  const serverKey = process.env.MIDTRANS_SERVER_KEY ?? "";
+  const result = await processMidtransNotification(
+    body as Record<string, unknown>,
+  );
 
-  if (!serverKey || !signatureKey) {
-    logger.warn("midtrans.webhook_missing_keys");
-    return NextResponse.json({ ok: true });
+  if (!result.ok) {
+    logger.warn("midtrans.webhook_rejected", {
+      message: result.message,
+      status: result.httpStatus,
+    });
+    return NextResponse.json(
+      { error: result.message },
+      { status: result.httpStatus },
+    );
   }
 
-  const ok = verifyMidtransSignature({
-    orderId,
-    statusCode,
-    grossAmount,
-    serverKey,
-    signatureKey,
-  });
-  if (!ok) {
-    return NextResponse.json({ error: "Bad signature" }, { status: 401 });
-  }
-
-  logger.info("midtrans.webhook_ok", { orderId, statusCode });
-  // TODO: map order_id ke SubscriptionEvent + applyPlanToBusiness
   return NextResponse.json({ ok: true });
+}
+
+export function GET() {
+  return new NextResponse("Midtrans webhook — gunakan POST", {
+    status: 405,
+    headers: { Allow: "POST" },
+  });
 }

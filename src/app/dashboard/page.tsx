@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ShoppingBag, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, CreditCard, ShoppingBag, TrendingUp, Users } from "lucide-react";
+import { format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyIdr } from "@/lib/utils";
@@ -72,6 +74,52 @@ export default async function DashboardHomePage() {
           )}
         </div>
       </div>
+
+      <Card className="border-primary/15 bg-gradient-to-br from-primary/5 via-background to-background">
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <CreditCard className="h-4 w-4" />
+              Langganan SaaS
+            </div>
+            <CardTitle className="text-xl">Paket & perpanjangan</CardTitle>
+            <CardDescription>
+              Limit fitur mengikuti paket efektif{" "}
+              <span className="font-semibold text-foreground">{plan}</span>
+              {business.plan !== plan ? (
+                <>
+                  {" "}
+                  (kontrak:{" "}
+                  <span className="font-medium text-foreground">
+                    {business.plan}
+                  </span>
+                  )
+                </>
+              ) : null}
+              .
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" asChild className="shrink-0">
+            <Link href="/dashboard/billing">Kelola billing</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+          <div className="rounded-lg border bg-card/80 px-3 py-2">
+            <p className="text-muted-foreground">Status langganan</p>
+            <p className="font-semibold">{business.subscriptionStatus}</p>
+          </div>
+          <div className="rounded-lg border bg-card/80 px-3 py-2">
+            <p className="text-muted-foreground">Berakhir / perpanjangan</p>
+            <p className="font-semibold">
+              {business.subscriptionEndsAt
+                ? format(business.subscriptionEndsAt, "d MMMM yyyy", {
+                    locale: localeId,
+                  })
+                : "—"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>

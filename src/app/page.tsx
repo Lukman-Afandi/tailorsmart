@@ -31,6 +31,9 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button variant="ghost" asChild>
+              <Link href="/pricing">Harga</Link>
+            </Button>
+            <Button variant="ghost" asChild>
               <Link href="/login">Masuk</Link>
             </Button>
             <Button asChild>

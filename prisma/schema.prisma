@@ -75,6 +75,7 @@ enum TenantSubscriptionStatus {
   PAST_DUE
   CANCELED
   SUSPENDED
+  EXPIRED
 }
 
 enum BillingProvider {
@@ -93,6 +94,7 @@ model Business {
   address         String?
   plan            SubscriptionPlan @default(FREE)
   subscriptionStatus TenantSubscriptionStatus @default(TRIALING)
+  subscriptionEndsAt DateTime?
   /// Trial SaaS 7 hari — fitur PRO sampai tanggal ini (jika status TRIALING).
   trialEndsAt     DateTime?
   /// Tenant ditangguhkan oleh super admin.
@@ -117,9 +119,32 @@ model Business {
   auditLogs AuditLog[]
   notifications TenantNotification[]
   subscriptionEvents SubscriptionEvent[]
+  billingTransactions BillingTransaction[]
 
   @@index([subscriptionStatus])
   @@index([suspendedAt])
+}
+
+model BillingTransaction {
+  id        String   @id @default(cuid())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  provider BillingProvider @default(MIDTRANS)
+
+  plan   SubscriptionPlan
+  amount Int
+  status String
+
+  externalId String?
+  paidAt DateTime?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId])
+  @@index([status])
 }
 
 /// Auth.js compatible User + kredensial tailor
