@@ -1,5 +1,6 @@
 import "server-only";
 
+import { addDays } from "date-fns";
 import type { BillingProvider, SubscriptionPlan } from "@prisma/client";
 import {
   BillingProvider as BillingProviderValue,
@@ -81,6 +82,25 @@ export async function applyPlanToBusiness(
   ]);
 }
 
+const PAID_SUBSCRIPTION_PERIOD_DAYS = 30;
+
+/** Akhir langganan setelah perpanjangan/pembelian (BASIC & PRO: +30 hari). */
+export function computeSubscriptionEndsAtAfterPayment(input: {
+  paidAt: Date;
+  subscriptionStatus: TenantSubscriptionStatus;
+  subscriptionEndsAt: Date | null;
+}): Date {
+  const active = input.subscriptionStatus === TenantSubscriptionStatus.ACTIVE;
+  const end = input.subscriptionEndsAt;
+  const extendFromExisting =
+    active &&
+    end !== null &&
+    end.getTime() > input.paidAt.getTime();
+
+  const base = extendFromExisting ? end : input.paidAt;
+  return addDays(base, PAID_SUBSCRIPTION_PERIOD_DAYS);
+}
+
 /** Setelah pembayaran Midtrans sukses — satu transaksi DB. */
 export async function finalizePaidSubscriptionFromMidtrans(input: {
   businessId: string;
@@ -88,13 +108,24 @@ export async function finalizePaidSubscriptionFromMidtrans(input: {
   plan: SubscriptionPlan;
   amountIdr: number;
   paidAt: Date;
-  subscriptionEndsAt: Date;
   raw?: unknown;
 }) {
-  const prev = await prisma.business.findUniqueOrThrow({
+  const business = await prisma.business.findUniqueOrThrow({
     where: { id: input.businessId },
-    select: { plan: true },
+    select: {
+      plan: true,
+      subscriptionStatus: true,
+      subscriptionEndsAt: true,
+    },
   });
+
+  const subscriptionEndsAt = computeSubscriptionEndsAtAfterPayment({
+    paidAt: input.paidAt,
+    subscriptionStatus: business.subscriptionStatus,
+    subscriptionEndsAt: business.subscriptionEndsAt,
+  });
+
+  const prevPlan = business.plan;
 
   await prisma.$transaction([
     prisma.billingTransaction.update({
@@ -105,7 +136,7 @@ export async function finalizePaidSubscriptionFromMidtrans(input: {
       data: {
         status: BillingTransactionStatus.PAID,
         paidAt: input.paidAt,
-        expiresAt: input.subscriptionEndsAt,
+        expiresAt: subscriptionEndsAt,
       },
     }),
     prisma.business.update({
@@ -114,14 +145,14 @@ export async function finalizePaidSubscriptionFromMidtrans(input: {
         plan: input.plan,
         subscriptionStatus: TenantSubscriptionStatus.ACTIVE,
         trialEndsAt: null,
-        subscriptionEndsAt: input.subscriptionEndsAt,
+        subscriptionEndsAt,
         billingProvider: BillingProviderValue.MIDTRANS,
       },
     }),
     prisma.subscriptionEvent.create({
       data: {
         businessId: input.businessId,
-        fromPlan: prev.plan,
+        fromPlan: prevPlan,
         toPlan: input.plan,
         provider: BillingProviderValue.MIDTRANS,
         externalId: input.billingTransactionId,

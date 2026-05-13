@@ -1,6 +1,5 @@
 import "server-only";
 
-import { addDays } from "date-fns";
 import type { SubscriptionPlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { BillingTransactionStatus } from "@/lib/billing/billing-transaction-status";
@@ -160,7 +159,6 @@ export async function processMidtransNotification(
   }
 
   const paidAt = new Date();
-  const subscriptionEndsAt = addDays(paidAt, 30);
 
   await finalizePaidSubscriptionFromMidtrans({
     businessId: tx.businessId,
@@ -168,7 +166,6 @@ export async function processMidtransNotification(
     plan: plan as SubscriptionPlan,
     amountIdr: tx.amount,
     paidAt,
-    subscriptionEndsAt,
     raw: remote,
   });
 

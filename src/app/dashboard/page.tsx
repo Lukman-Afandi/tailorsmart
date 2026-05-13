@@ -6,6 +6,7 @@ import { id as localeId } from "date-fns/locale";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyIdr } from "@/lib/utils";
+import { ORDER_STATUS_LABEL } from "@/lib/order-status";
 import { orderScopeForRole } from "@/lib/order-access";
 import { getDashboardStats } from "@/lib/queries/dashboard-stats";
 import { PLAN_LIMITS } from "@/lib/plans";
@@ -199,17 +200,39 @@ export default async function DashboardHomePage() {
               {recentOrders.map((o) => (
                 <li
                   key={o.id}
-                  className="flex flex-col gap-1 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{o.title}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium">{o.title}</p>
+                      <Badge variant="secondary" className="shrink-0">
+                        Aktif
+                      </Badge>
+                    </div>
                     <p className="truncate text-sm text-muted-foreground">
-                      {o.customer.name} · {o.status}
+                      {o.customer.name} · {ORDER_STATUS_LABEL[o.status]}
+                      {o.description ? ` · ${o.description}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Dibuat{" "}
+                      {format(o.createdAt, "d MMM yyyy HH:mm", {
+                        locale: localeId,
+                      })}
+                      {o.updatedAt.getTime() !== o.createdAt.getTime()
+                        ? ` · diubah ${format(o.updatedAt, "d MMM yyyy", {
+                            locale: localeId,
+                          })}`
+                        : ""}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm font-semibold">
-                    {formatCurrencyIdr(Number(o.amount))}
-                  </p>
+                  <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                    <p className="text-sm font-semibold">
+                      {formatCurrencyIdr(Number(o.amount))}
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/dashboard/orders/${o.id}`}>Detail order</Link>
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
