@@ -28,9 +28,7 @@ export function midtransBasicAuthHeader(serverKey: string): string {
 }
 
 export function midtransApiBase(isProduction: boolean): string {
-  return isProduction
-    ? "https://api.midtrans.com"
-    : "https://api.sandbox.midtrans.com";
+  return isProduction ? "https://api.midtrans.com" : "https://api.sandbox.midtrans.com";
 }
 
 export function midtransSnapScriptUrl(isProduction: boolean): string {
@@ -54,7 +52,9 @@ export async function midtransCreateSnapTransaction(input: {
   itemId: string;
   callbacks?: { finish?: string; error?: string; pending?: string };
 }): Promise<MidtransSnapCreateResponse> {
-  const url = `${midtransApiBase(input.isProduction)}/v1/transactions`;
+  const url = input.isProduction
+    ? "https://app.midtrans.com/snap/v1/transactions"
+    : "https://app.sandbox.midtrans.com/snap/v1/transactions";
   const res = await fetch(url, {
     method: "POST",
     headers: {
