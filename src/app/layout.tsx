@@ -9,9 +9,8 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-const appUrl =
-  process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "TailorFlow";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "TailorSmart";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -20,7 +19,7 @@ export const metadata: Metadata = {
     template: `%s · ${appName}`,
   },
   description:
-    "TailorFlow membantu bisnis tailor mengelola pelanggan, ukuran, dan order dengan aman — multi-tenant, cepat, dan siap produksi.",
+    "TailorSmart membantu bisnis tailor mengelola pelanggan, ukuran, dan order dengan aman — multi-tenant, cepat, dan siap produksi.",
   applicationName: appName,
   openGraph: {
     type: "website",

@@ -24,9 +24,9 @@ export default function LandingPage() {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              TF
+              TS
             </div>
-            <span className="font-semibold">TailorFlow</span>
+            <span className="font-semibold">TailorSmart</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -107,14 +107,12 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/40 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Pemasukan bulan ini
-                  </p>
+                  <p className="text-xs text-muted-foreground">Pemasukan bulan ini</p>
                   <p className="text-2xl font-semibold">Rp12.450.000</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  Pencarian debounce + tabel modern dengan skeleton loading.
+                  Pencarian mudah dan cepat + tabel modern mudah diakses.
                 </div>
               </CardContent>
             </Card>
@@ -128,8 +126,8 @@ export default function LandingPage() {
                 Paket yang fleksibel
               </h2>
               <p className="mt-2 text-muted-foreground">
-                FREE untuk mulai, BASIC untuk ekspor & reminder, PROFESSIONAL
-                untuk tim dan analitik mendalam.
+                FREE untuk mulai, BASIC untuk ekspor & reminder, PROFESSIONAL untuk tim
+                dan analitik mendalam.
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-3">
@@ -183,9 +181,8 @@ export default function LandingPage() {
               <div>
                 <h3 className="text-xl font-semibold">Keamanan tenant-first</h3>
                 <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                  Setiap query di-scope ke `businessId` dari sesi. Middleware
-                  melindungi area dashboard; server actions memvalidasi ulang
-                  kepemilikan data.
+                  Setiap query di-scope ke `businessId` dari sesi. Middleware melindungi
+                  area dashboard; server actions memvalidasi ulang kepemilikan data.
                 </p>
               </div>
             </div>
@@ -197,7 +194,7 @@ export default function LandingPage() {
 
         <footer className="border-t py-10">
           <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
-            <p>© {new Date().getFullYear()} TailorFlow</p>
+            <p>© {new Date().getFullYear()} TailorSmart</p>
             <div className="flex gap-4">
               <Link className="hover:text-foreground" href="/login">
                 Login
